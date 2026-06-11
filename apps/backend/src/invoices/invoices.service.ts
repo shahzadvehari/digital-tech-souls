@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { MailService } from '../mail/mail.service';
 
@@ -7,8 +7,20 @@ export class InvoicesService {
   constructor(private prisma: PrismaService, private mailService: MailService) {}
 
   // Get all invoices (for Admin)
-  async findAll() {
+  async findAll(user?: any) {
+    let whereClause: any = {};
+    if (user && user.role === 'RESELLER_USER') {
+      whereClause = {
+        order: {
+          OR: [
+            { affiliateId: user.sub || user.userId },
+            { user: { referredById: user.sub || user.userId } }
+          ]
+        }
+      };
+    }
     return this.prisma.invoice.findMany({
+      where: whereClause,
       include: {
         user: { select: { username: true, email: true } },
         items: true,
@@ -117,7 +129,20 @@ export class InvoicesService {
   }
 
   // Update invoice status (Admin marks as PAID)
-  async updateStatus(id: number, status: string) {
+  async updateStatus(id: number, status: string, currentUser?: any) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id },
+      include: { order: { include: { user: true } } }
+    });
+
+    if (!invoice) throw new NotFoundException('Invoice not found');
+
+    if (currentUser && currentUser.role === 'RESELLER_USER') {
+      if (invoice.order && invoice.order.affiliateId !== currentUser.sub && invoice.order.user.referredById !== currentUser.sub) {
+        throw new UnauthorizedException('You can only approve your own invoices');
+      }
+    }
+
     return this.prisma.invoice.update({
       where: { id },
       data: { 

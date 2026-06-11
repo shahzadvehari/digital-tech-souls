@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma.service';
 export class StatsService {
   constructor(private prisma: PrismaService) {}
 
-  async getDashboardStats(startDateStr?: string, endDateStr?: string) {
+  async getDashboardStats(user: any, startDateStr?: string, endDateStr?: string) {
     const dateFilter: any = {};
     if (startDateStr || endDateStr) {
       dateFilter.createdAt = {};
@@ -15,6 +15,17 @@ export class StatsService {
         end.setHours(23, 59, 59, 999);
         dateFilter.createdAt.lte = end;
       }
+    }
+    
+    let orderWhereClause: any = { ...dateFilter };
+    if (user && user.role === 'RESELLER_USER') {
+      orderWhereClause = {
+        ...dateFilter,
+        OR: [
+          { affiliateId: user.sub || user.userId },
+          { user: { referredById: user.sub || user.userId } }
+        ]
+      };
     }
 
     // 1. Total Users
@@ -34,7 +45,7 @@ export class StatsService {
 
     // 4. Total Revenue (Assuming base currency is tracked. For now, sum of all PAID orders)
     const paidOrders = await this.prisma.order.findMany({
-      where: { status: 'PAID', ...dateFilter }
+      where: { status: 'PAID', ...orderWhereClause }
     });
     
     // We'll normalize revenue in frontend or backend. Assuming totalAmount is what we want to sum.
@@ -46,8 +57,13 @@ export class StatsService {
 
     const totalSalesCount = paidOrders.length;
     
+    let saleWhereClause: any = { ...dateFilter };
+    if (user && user.role === 'RESELLER_USER') {
+      saleWhereClause.resellerName = user.username || user.email;
+    }
+
     const totalSalesVolume = await this.prisma.sale.aggregate({
-      where: dateFilter,
+      where: saleWhereClause,
       _sum: { saleAmount: true, commissionEarned: true }
     });
     
@@ -55,13 +71,14 @@ export class StatsService {
     const totalCommissions = totalSalesVolume._sum.commissionEarned || 0;
 
     // Additional order metrics
-    const totalOrdersCount = await this.prisma.order.count({ where: dateFilter });
-    const pendingOrdersCount = await this.prisma.order.count({ where: { status: 'PENDING', ...dateFilter } });
-    const completedOrdersCount = await this.prisma.order.count({ where: { status: { in: ['COMPLETED', 'PAID'] }, ...dateFilter } });
-    const cancelledOrdersCount = await this.prisma.order.count({ where: { status: 'CANCELLED', ...dateFilter } });
+    const totalOrdersCount = await this.prisma.order.count({ where: orderWhereClause });
+    const pendingOrdersCount = await this.prisma.order.count({ where: { status: 'PENDING', ...orderWhereClause } });
+    const completedOrdersCount = await this.prisma.order.count({ where: { status: { in: ['COMPLETED', 'PAID'] }, ...orderWhereClause } });
+    const cancelledOrdersCount = await this.prisma.order.count({ where: { status: 'CANCELLED', ...orderWhereClause } });
 
     // 5. Recent Orders (Last 5)
     const recentOrders = await this.prisma.order.findMany({
+      where: orderWhereClause,
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -87,7 +104,13 @@ export class StatsService {
     const recentPaidOrders = await this.prisma.order.findMany({
       where: {
         status: 'PAID',
-        createdAt: { gte: thirtyDaysAgo }
+        createdAt: { gte: thirtyDaysAgo },
+        ...(user && user.role === 'RESELLER_USER' ? {
+            OR: [
+              { affiliateId: user.sub || user.userId },
+              { user: { referredById: user.sub || user.userId } }
+            ]
+        } : {})
       },
       select: {
         createdAt: true,

@@ -143,7 +143,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                   </Link>
                 ) : (
                   <a 
-                    href={product.downloadUrl || '#'}
+                    href={product.downloadUrl?.startsWith('http') ? product.downloadUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${product.downloadUrl}`}
                     target="_blank"
                     rel="noreferrer"
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 py-4 rounded-xl text-lg font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-colors"

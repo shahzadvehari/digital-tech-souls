@@ -29,15 +29,24 @@ export default function Navbar() {
         // Silently ignore if backend is unavailable
       });
       
-    if (localStorage.getItem('token')) {
-      setIsLoggedIn(true);
-      const u = localStorage.getItem('user');
-      if (u) {
-        try {
-          setCurrentUser(JSON.parse(u));
-        } catch(e) {}
+    const updateLocalUser = () => {
+      if (localStorage.getItem('token')) {
+        setIsLoggedIn(true);
+        const u = localStorage.getItem('user');
+        if (u) {
+          try {
+            setCurrentUser(JSON.parse(u));
+          } catch(e) {}
+        }
       }
-    }
+    };
+
+    updateLocalUser();
+
+    window.addEventListener('user-updated', updateLocalUser);
+    return () => {
+      window.removeEventListener('user-updated', updateLocalUser);
+    };
   }, []);
 
   return (
@@ -100,7 +109,11 @@ export default function Navbar() {
           {/* Accounts Dropdown */}
           <div className="relative group pb-2">
             <button className="flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10 mt-2">
-              <User className="w-4 h-4" /> 
+              {isLoggedIn && currentUser?.profilePicture ? (
+                <img src={currentUser.profilePicture} alt="Profile" className="w-5 h-5 rounded-full object-cover mr-1" />
+              ) : (
+                <User className="w-4 h-4 mr-1" />
+              )}
               {isLoggedIn && currentUser ? (
                 <span className="max-w-[100px] truncate">{currentUser.username || currentUser.email?.split('@')[0] || 'Account'}</span>
               ) : 'Account'}
@@ -198,7 +211,12 @@ export default function Navbar() {
           {isLoggedIn ? (
             <>
               <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-2 text-gray-300 hover:text-white font-medium py-1">
-                <User className="w-4 h-4" /> My Dashboard
+                {currentUser?.profilePicture ? (
+                  <img src={currentUser.profilePicture} alt="Profile" className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+                My Dashboard
               </Link>
               <button 
                 onClick={() => {

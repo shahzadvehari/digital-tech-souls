@@ -93,8 +93,12 @@ export default function DashboardPage() {
             
       <main className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <Package className="w-8 h-8 text-blue-500" />
+          <div className="flex items-center gap-4">
+            {user?.profilePicture ? (
+              <img src={user.profilePicture} alt="Profile" className="w-12 h-12 rounded-full object-cover border-2 border-gray-800" />
+            ) : (
+              <Package className="w-8 h-8 text-blue-500" />
+            )}
             <div>
               <h1 className="text-3xl font-bold">My Dashboard</h1>
               {user && (

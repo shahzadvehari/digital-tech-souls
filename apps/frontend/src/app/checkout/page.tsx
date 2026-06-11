@@ -24,15 +24,17 @@ function CheckoutContent() {
   const [submitting, setSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'STRIPE' | 'BANK_TRANSFER' | 'CRYPTO' | 'EASYPAISA' | 'JAZZCASH' | 'NAYAPAY' | 'SADAPAY'>('STRIPE');
 
-  const PAYMENT_METHODS = [
-    { id: 'STRIPE', name: 'Credit / Debit Card', icon: CreditCard },
-    { id: 'BANK_TRANSFER', name: 'Bank Transfer', icon: Building2 },
-    { id: 'CRYPTO', name: 'Crypto (USDT)', icon: Bitcoin },
-    { id: 'EASYPAISA', name: 'EasyPaisa', icon: Smartphone },
-    { id: 'JAZZCASH', name: 'JazzCash', icon: Smartphone },
-    { id: 'NAYAPAY', name: 'NayaPay', icon: Wallet },
-    { id: 'SADAPAY', name: 'SadaPay', icon: Wallet },
-  ] as const;
+  const ALL_PAYMENT_METHODS = [
+    { id: 'STRIPE', name: 'Credit / Debit Card', icon: CreditCard, enabled: settings?.paymentStripeEnabled !== 'false' },
+    { id: 'BANK_TRANSFER', name: 'Bank Transfer', icon: Building2, enabled: settings?.paymentBankEnabled !== 'false' },
+    { id: 'CRYPTO', name: 'Crypto (USDT)', icon: Bitcoin, enabled: settings?.paymentCryptoEnabled !== 'false' },
+    { id: 'EASYPAISA', name: 'EasyPaisa', icon: Smartphone, enabled: settings?.paymentMobileEnabled !== 'false' },
+    { id: 'JAZZCASH', name: 'JazzCash', icon: Smartphone, enabled: settings?.paymentMobileEnabled !== 'false' },
+    { id: 'NAYAPAY', name: 'NayaPay', icon: Wallet, enabled: settings?.paymentMobileEnabled !== 'false' },
+    { id: 'SADAPAY', name: 'SadaPay', icon: Wallet, enabled: settings?.paymentMobileEnabled !== 'false' },
+  ];
+
+  const PAYMENT_METHODS = ALL_PAYMENT_METHODS.filter(m => m.enabled);
   
   useEffect(() => {
     if (!itemId || !itemType) {
@@ -79,6 +81,13 @@ function CheckoutContent() {
     
     fetchData();
   }, [itemId, itemType]);
+
+  useEffect(() => {
+    // If current selected payment method is not in the filtered list, select the first available one
+    if (PAYMENT_METHODS.length > 0 && !PAYMENT_METHODS.find(m => m.id === paymentMethod)) {
+      setPaymentMethod(PAYMENT_METHODS[0].id as any);
+    }
+  }, [PAYMENT_METHODS, paymentMethod]);
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();

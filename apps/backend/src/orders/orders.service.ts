@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { MailService } from '../mail/mail.service';
@@ -120,8 +120,20 @@ export class OrdersService {
     });
   }
 
-  findAll() {
+  findAll(user?: any) {
+    let whereClause: any = {};
+    if (user && user.role === 'RESELLER_USER') {
+      // For Reseller, only show orders where they are the affiliate, 
+      // or where the user who bought it was referred by them
+      whereClause = {
+        OR: [
+          { affiliateId: user.sub || user.userId },
+          { user: { referredById: user.sub || user.userId } }
+        ]
+      };
+    }
     return this.prisma.order.findMany({
+      where: whereClause,
       include: { 
         items: true,
         user: { select: { email: true, username: true } }
@@ -130,13 +142,19 @@ export class OrdersService {
     });
   }
 
-  async updateStatus(id: number, status: string) {
+  async updateStatus(id: number, status: string, currentUser?: any) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: { user: true, items: true }
     });
 
     if (!order) throw new NotFoundException('Order not found');
+
+    if (currentUser && currentUser.role === 'RESELLER_USER') {
+      if (order.affiliateId !== currentUser.sub && order.user.referredById !== currentUser.sub) {
+        throw new UnauthorizedException('You can only approve your own orders');
+      }
+    }
 
     // Affiliate Commission Logic
     if (status === 'PAID' && order.status !== 'PAID') {

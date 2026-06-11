@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, X, Save, Image as ImageIcon, UploadCloud, Link as LinkIcon, MonitorPlay, FileArchive } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Save, Image as ImageIcon, UploadCloud, Link as LinkIcon, MonitorPlay, FileArchive, FileSpreadsheet, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export default function AdminThemesTools() {
   const [items, setItems] = useState<any[]>([]);
@@ -130,6 +131,51 @@ export default function AdminThemesTools() {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        setBulkJson(JSON.stringify(data, null, 2));
+      } catch (err) {
+        console.error("Error parsing file:", err);
+        alert("Error parsing file. Please ensure it is a valid CSV or Excel file.");
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleDownloadSample = () => {
+    const sampleData = [
+      {
+        name: "Premium Admin Template",
+        type: "THEME",
+        price: 49.99,
+        description: "A comprehensive admin dashboard template.",
+        features: "Responsive design, Next.js, TailwindCSS",
+        imageUrl: "https://example.com/image.png",
+        logoUrl: "https://example.com/logo.png",
+        downloadUrl: "https://example.com/download.zip",
+        livePreviewUrl: "https://example.com/preview",
+        metaTitle: "Premium Admin Template - Best Dashboard",
+        metaDesc: "Get the best admin dashboard template for your next project.",
+        seoKeywords: "admin, dashboard, template, nextjs, react"
+      }
+    ];
+    
+    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sample");
+    XLSX.writeFile(wb, "themes_tools_sample.xlsx");
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this item?")) return;
     const token = localStorage.getItem('token');
@@ -212,7 +258,29 @@ export default function AdminThemesTools() {
             
             <form onSubmit={handleBulkSubmit} className="p-6">
               <div className="mb-4">
-                <p className="text-sm text-gray-400 mb-2">Paste a JSON array of products. Example format:</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-400">Paste JSON or upload a CSV/Excel file:</p>
+                  <div className="flex gap-2">
+                    <button 
+                      type="button" 
+                      onClick={handleDownloadSample}
+                      className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors border border-gray-700"
+                    >
+                      <Download className="w-4 h-4" />
+                      Sample
+                    </button>
+                    <label className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold transition-colors">
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Upload File
+                      <input 
+                        type="file" 
+                        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+                        className="hidden" 
+                        onChange={handleFileUpload} 
+                      />
+                    </label>
+                  </div>
+                </div>
                 <pre className="bg-gray-950 p-4 rounded-lg text-xs text-gray-400 overflow-x-auto mb-4 border border-gray-800">
 {`[
   {

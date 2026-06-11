@@ -57,7 +57,18 @@ export default function SettingsAdmin() {
     seo_author: 'Digital Tech Souls',
     seo_robots: 'index, follow',
     seo_canonical_url: 'https://digitaltechsouls.com',
-    seo_og_image: '/images/hero-hosting.png'
+    seo_og_image: '/images/hero-hosting.png',
+    paymentStripeEnabled: 'true',
+    paymentCryptoEnabled: 'true',
+    paymentBankEnabled: 'true',
+    paymentMobileEnabled: 'true',
+    payoutBankEnabled: 'true',
+    payoutEasyPaisaEnabled: 'true',
+    payoutJazzCashEnabled: 'true',
+    payoutNayaPayEnabled: 'true',
+    payoutSadaPayEnabled: 'true',
+    payoutPayPalEnabled: 'true',
+    payoutCryptoEnabled: 'true'
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -125,6 +136,17 @@ export default function SettingsAdmin() {
           invoiceLogoUrl: settingsObj.invoiceLogoUrl || prev.invoiceLogoUrl,
           invoiceTaxRate: settingsObj.invoiceTaxRate || prev.invoiceTaxRate,
           invoiceDiscountRate: settingsObj.invoiceDiscountRate || prev.invoiceDiscountRate,
+          paymentStripeEnabled: settingsObj.paymentStripeEnabled || prev.paymentStripeEnabled,
+          paymentCryptoEnabled: settingsObj.paymentCryptoEnabled || prev.paymentCryptoEnabled,
+          paymentBankEnabled: settingsObj.paymentBankEnabled || prev.paymentBankEnabled,
+          paymentMobileEnabled: settingsObj.paymentMobileEnabled || prev.paymentMobileEnabled,
+          payoutBankEnabled: settingsObj.payoutBankEnabled || prev.payoutBankEnabled,
+          payoutEasyPaisaEnabled: settingsObj.payoutEasyPaisaEnabled || prev.payoutEasyPaisaEnabled,
+          payoutJazzCashEnabled: settingsObj.payoutJazzCashEnabled || prev.payoutJazzCashEnabled,
+          payoutNayaPayEnabled: settingsObj.payoutNayaPayEnabled || prev.payoutNayaPayEnabled,
+          payoutSadaPayEnabled: settingsObj.payoutSadaPayEnabled || prev.payoutSadaPayEnabled,
+          payoutPayPalEnabled: settingsObj.payoutPayPalEnabled || prev.payoutPayPalEnabled,
+          payoutCryptoEnabled: settingsObj.payoutCryptoEnabled || prev.payoutCryptoEnabled,
         }));
       }
     } catch (error) {
@@ -141,21 +163,18 @@ export default function SettingsAdmin() {
     
     try {
       const token = localStorage.getItem('token');
-      const promises = Object.entries(settings).map(([key, value]) => 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/settings`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ key, value })
-        })
-      );
+      const settingsArray = Object.entries(settings).map(([key, value]) => ({ key, value: value === null || value === undefined ? '' : String(value) }));
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/settings/bulk`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(settingsArray)
+      });
       
-      const results = await Promise.all(promises);
-      const allOk = results.every(r => r.ok);
-      
-      if (allOk) {
+      if (res.ok) {
         setMessage('Settings saved successfully!');
       } else {
         setMessage('Error saving settings. Note: Only SUPER_USER can edit settings.');
@@ -224,6 +243,37 @@ export default function SettingsAdmin() {
         </div>
       ) : (
         <form onSubmit={handleSave} className="space-y-6">
+
+          {/* Affiliate Payout Options */}
+          <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 mt-6">
+            <h3 className="text-lg font-medium text-white mb-4">Affiliate Payout Methods</h3>
+            <p className="text-sm text-gray-400 mb-6">Select which methods affiliates can use to request commission withdrawals.</p>
+            <div className="space-y-4">
+              {[
+                { label: 'Bank Transfer', key: 'payoutBankEnabled' },
+                { label: 'EasyPaisa', key: 'payoutEasyPaisaEnabled' },
+                { label: 'JazzCash', key: 'payoutJazzCashEnabled' },
+                { label: 'NayaPay', key: 'payoutNayaPayEnabled' },
+                { label: 'SadaPay', key: 'payoutSadaPayEnabled' },
+                { label: 'PayPal', key: 'payoutPayPalEnabled' },
+                { label: 'Crypto', key: 'payoutCryptoEnabled' },
+              ].map(({ label, key }) => (
+                <div key={key} className="flex justify-between items-center bg-gray-950 p-4 rounded-lg border border-gray-800">
+                  <span className="text-white font-medium">{label}</span>
+                  <label className="flex items-center cursor-pointer">
+                    <div className="relative">
+                      <input type="checkbox" className="sr-only" 
+                        checked={settings[key as keyof typeof settings] === 'true'}
+                        onChange={e => setSettings({...settings, [key]: e.target.checked ? 'true' : 'false'})}
+                      />
+                      <div className={`block w-10 h-6 rounded-full transition-colors ${settings[key as keyof typeof settings] === 'true' ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                      <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings[key as keyof typeof settings] === 'true' ? 'transform translate-x-4' : ''}`}></div>
+                    </div>
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-6">
             <h2 className="text-xl font-bold text-white mb-4">Site Status (Maintenance)</h2>
@@ -544,7 +594,22 @@ export default function SettingsAdmin() {
 
           {/* Payment Gateways */}
           <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-            <h3 className="text-lg font-medium text-white mb-4">Payment Gateways (Stripe)</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-white">Payment Gateways (Stripe)</h3>
+              <label className="flex items-center cursor-pointer">
+                <div className="relative">
+                  <input type="checkbox" className="sr-only" 
+                    checked={settings.paymentStripeEnabled === 'true'}
+                    onChange={e => setSettings({...settings, paymentStripeEnabled: e.target.checked ? 'true' : 'false'})}
+                  />
+                  <div className={`block w-10 h-6 rounded-full transition-colors ${settings.paymentStripeEnabled === 'true' ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.paymentStripeEnabled === 'true' ? 'transform translate-x-4' : ''}`}></div>
+                </div>
+                <div className="ml-3 text-sm text-gray-400">
+                  {settings.paymentStripeEnabled === 'true' ? 'Enabled' : 'Disabled'}
+                </div>
+              </label>
+            </div>
             <p className="text-sm text-gray-400 mb-6">Configure your Stripe API keys to accept credit card payments. Get these from your Stripe Dashboard.</p>
             
             <div className="space-y-4">
@@ -585,6 +650,50 @@ export default function SettingsAdmin() {
           <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
             <h3 className="text-lg font-medium text-white mb-4">Manual Payment Methods</h3>
             <p className="text-sm text-gray-400 mb-6">Configure account numbers and wallet addresses for manual transfers. Customers will upload screenshots of payments to these accounts.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="flex items-center justify-between p-4 bg-gray-950 border border-gray-800 rounded-lg">
+                <span className="text-sm font-medium text-gray-300">Bank Transfer</span>
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only" 
+                      checked={settings.paymentBankEnabled === 'true'}
+                      onChange={e => setSettings({...settings, paymentBankEnabled: e.target.checked ? 'true' : 'false'})}
+                    />
+                    <div className={`block w-10 h-6 rounded-full transition-colors ${settings.paymentBankEnabled === 'true' ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.paymentBankEnabled === 'true' ? 'transform translate-x-4' : ''}`}></div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-950 border border-gray-800 rounded-lg">
+                <span className="text-sm font-medium text-gray-300">Crypto Transfer</span>
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only" 
+                      checked={settings.paymentCryptoEnabled === 'true'}
+                      onChange={e => setSettings({...settings, paymentCryptoEnabled: e.target.checked ? 'true' : 'false'})}
+                    />
+                    <div className={`block w-10 h-6 rounded-full transition-colors ${settings.paymentCryptoEnabled === 'true' ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.paymentCryptoEnabled === 'true' ? 'transform translate-x-4' : ''}`}></div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-950 border border-gray-800 rounded-lg">
+                <span className="text-sm font-medium text-gray-300">Mobile Wallets</span>
+                <label className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only" 
+                      checked={settings.paymentMobileEnabled === 'true'}
+                      onChange={e => setSettings({...settings, paymentMobileEnabled: e.target.checked ? 'true' : 'false'})}
+                    />
+                    <div className={`block w-10 h-6 rounded-full transition-colors ${settings.paymentMobileEnabled === 'true' ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.paymentMobileEnabled === 'true' ? 'transform translate-x-4' : ''}`}></div>
+                  </div>
+                </label>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

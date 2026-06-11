@@ -107,9 +107,10 @@ export default function UserVault() {
 
                   {item.downloadUrl ? (
                     <a 
-                      href={item.downloadUrl}
+                      href={item.downloadUrl?.startsWith('http') ? item.downloadUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${item.downloadUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      download
                       className="w-full py-3 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                     >
                       <Download className="w-4 h-4" /> Download File

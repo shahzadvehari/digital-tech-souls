@@ -29,6 +29,15 @@ export class SettingsController {
     return this.settingsService.upsert(body.key, body.value, body.description);
   }
 
+  @Post('bulk')
+  @Roles('SUPER_USER')
+  upsertBulk(@Body() settings: { key: string; value: string; description?: string }[]) {
+    if (!Array.isArray(settings)) {
+      return { success: false, message: 'Expected an array of settings' };
+    }
+    return this.settingsService.upsertBulk(settings);
+  }
+
   @Post('test-smtp')
   @Roles('SUPER_USER')
   testSmtp(@Body() body: { to: string }) {

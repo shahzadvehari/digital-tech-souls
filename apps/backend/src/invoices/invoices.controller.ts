@@ -9,7 +9,7 @@ export class InvoicesController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Request() req: any, @Body() createInvoiceDto: any) {
-    if (!['SUPER_USER', 'ADMIN_USER'].includes(req.user.role)) {
+    if (!['SUPER_USER', 'ADMIN_USER', 'RESELLER_USER'].includes(req.user.role)) {
       throw new UnauthorizedException('Only admins can create custom invoices directly');
     }
     return this.invoicesService.create(createInvoiceDto);
@@ -23,10 +23,10 @@ export class InvoicesController {
   @UseGuards(JwtAuthGuard)
   @Get('admin')
   findAllAdmin(@Request() req: any) {
-    if (!['SUPER_USER', 'ADMIN_USER'].includes(req.user.role)) {
+    if (!['SUPER_USER', 'ADMIN_USER', 'RESELLER_USER'].includes(req.user.role)) {
       throw new UnauthorizedException();
     }
-    return this.invoicesService.findAll();
+    return this.invoicesService.findAll(req.user);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -40,7 +40,7 @@ export class InvoicesController {
   async findOne(@Request() req: any, @Param('id') id: string) {
     const invoice = await this.invoicesService.findOne(+id);
     // Only allow admin or the owner to view
-    if (!['SUPER_USER', 'ADMIN_USER'].includes(req.user.role) && invoice.userId !== req.user.userId) {
+    if (!['SUPER_USER', 'ADMIN_USER', 'RESELLER_USER'].includes(req.user.role) && invoice.userId !== req.user.userId) {
       throw new UnauthorizedException();
     }
     return invoice;
@@ -49,10 +49,10 @@ export class InvoicesController {
   @UseGuards(JwtAuthGuard)
   @Patch('admin/:id/status')
   updateStatus(@Request() req: any, @Param('id') id: string, @Body('status') status: string) {
-    if (!['SUPER_USER', 'ADMIN_USER'].includes(req.user.role)) {
+    if (!['SUPER_USER', 'ADMIN_USER', 'RESELLER_USER'].includes(req.user.role)) {
       throw new UnauthorizedException();
     }
-    return this.invoicesService.updateStatus(+id, status);
+    return this.invoicesService.updateStatus(+id, status, req.user);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -68,7 +68,7 @@ export class InvoicesController {
   @UseGuards(JwtAuthGuard)
   @Patch('admin/:id')
   updateAdmin(@Request() req: any, @Param('id') id: string, @Body() data: any) {
-    if (!['SUPER_USER', 'ADMIN_USER'].includes(req.user.role)) {
+    if (!['SUPER_USER', 'ADMIN_USER', 'RESELLER_USER'].includes(req.user.role)) {
       throw new UnauthorizedException();
     }
     return this.invoicesService.update(+id, data);
@@ -77,7 +77,7 @@ export class InvoicesController {
   @UseGuards(JwtAuthGuard)
   @Post('admin/:id/resend')
   resendEmail(@Request() req: any, @Param('id') id: string) {
-    if (!['SUPER_USER', 'ADMIN_USER'].includes(req.user.role)) {
+    if (!['SUPER_USER', 'ADMIN_USER', 'RESELLER_USER'].includes(req.user.role)) {
       throw new UnauthorizedException();
     }
     return this.invoicesService.resendInvoiceEmail(+id);
@@ -86,7 +86,7 @@ export class InvoicesController {
   @UseGuards(JwtAuthGuard)
   @Delete('admin/:id')
   remove(@Request() req: any, @Param('id') id: string) {
-    if (!['SUPER_USER', 'ADMIN_USER'].includes(req.user.role)) {
+    if (!['SUPER_USER', 'ADMIN_USER', 'RESELLER_USER'].includes(req.user.role)) {
       throw new UnauthorizedException();
     }
     return this.invoicesService.remove(+id);

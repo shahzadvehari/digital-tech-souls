@@ -20,4 +20,18 @@ export class SettingsService {
       create: { key, value, description },
     });
   }
+
+  async upsertBulk(settings: { key: string; value: string; description?: string }[]) {
+    // Perform sequential upserts to avoid SQLite SQLITE_BUSY
+    const results = [];
+    for (const setting of settings) {
+      const res = await this.prisma.setting.upsert({
+        where: { key: setting.key },
+        update: { value: setting.value, description: setting.description },
+        create: { key: setting.key, value: setting.value, description: setting.description },
+      });
+      results.push(res);
+    }
+    return results;
+  }
 }

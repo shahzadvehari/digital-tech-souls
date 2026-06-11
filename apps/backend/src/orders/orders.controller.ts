@@ -22,28 +22,28 @@ export class OrdersController {
   }
 
   @UseGuards(RolesGuard)
-  @Roles('SUPER_USER', 'ADMIN_USER')
+  @Roles('SUPER_USER', 'ADMIN_USER', 'RESELLER_USER')
   @Get()
-  findAll() {
-    return this.ordersService.findAll();
+  findAll(@Request() req: any) {
+    return this.ordersService.findAll(req.user);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('SUPER_USER', 'ADMIN_USER')
+  @Roles('SUPER_USER', 'ADMIN_USER', 'RESELLER_USER')
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.ordersService.updateStatus(+id, status);
+  updateStatus(@Request() req: any, @Param('id') id: string, @Body('status') status: string) {
+    return this.ordersService.updateStatus(+id, status, req.user);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('SUPER_USER', 'ADMIN_USER')
+  @Roles('SUPER_USER', 'ADMIN_USER', 'RESELLER_USER')
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDto: any) {
     return this.ordersService.update(+id, updateDto);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('SUPER_USER', 'ADMIN_USER')
+  @Roles('SUPER_USER', 'ADMIN_USER', 'RESELLER_USER')
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.ordersService.remove(+id);
@@ -62,7 +62,7 @@ export class OrdersController {
   }
 
   @UseGuards(RolesGuard)
-  @Roles('SUPER_USER', 'ADMIN_USER')
+  @Roles('SUPER_USER', 'ADMIN_USER', 'RESELLER_USER')
   @Post(':id/resend-invoice')
   resendInvoice(@Param('id') id: string) {
     return this.ordersService.resendInvoiceEmail(+id);

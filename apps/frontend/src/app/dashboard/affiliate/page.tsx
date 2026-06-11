@@ -12,6 +12,7 @@ export default function AffiliateDashboard() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [settings, setSettings] = useState<any>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -28,19 +29,44 @@ export default function AffiliateDashboard() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/affiliates/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
-        setStats(await res.json());
-      } else if (res.status === 401 || res.status === 400 || res.status === 404) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        router.push('/login');
+        if (res.ok) {
+          setStats(await res.json());
+        } else if (res.status === 401 || res.status === 400 || res.status === 404) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/login');
+          return;
+        }
+
+        // Fetch settings for payout options
+        const settingsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/settings`);
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          const settingsObj = settingsData.reduce((acc: any, curr: any) => ({ ...acc, [curr.key]: curr.value }), {});
+          setSettings(settingsObj);
+          
+          // Auto-select first available method if current is disabled
+          const methods = [
+            { id: 'Bank Transfer', key: 'payoutBankEnabled' },
+            { id: 'EasyPaisa', key: 'payoutEasyPaisaEnabled' },
+            { id: 'JazzCash', key: 'payoutJazzCashEnabled' },
+            { id: 'NayaPay', key: 'payoutNayaPayEnabled' },
+            { id: 'SadaPay', key: 'payoutSadaPayEnabled' },
+            { id: 'PayPal', key: 'payoutPayPalEnabled' },
+            { id: 'Crypto', key: 'payoutCryptoEnabled' }
+          ];
+          const availableMethod = methods.find(m => settingsObj[m.key] !== 'false');
+          if (availableMethod) {
+             setPaymentMethod(availableMethod.id);
+          }
+        }
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,13 +238,13 @@ export default function AffiliateDashboard() {
                 onChange={e => setPaymentMethod(e.target.value)}
                 className="w-full bg-black/50 border border-gray-800 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
               >
-                <option value="Bank Transfer">Bank Transfer</option>
-                <option value="EasyPaisa">EasyPaisa</option>
-                <option value="JazzCash">JazzCash</option>
-                <option value="NayaPay">NayaPay</option>
-                <option value="SadaPay">SadaPay</option>
-                <option value="PayPal">PayPal</option>
-                <option value="Crypto">Crypto</option>
+                {settings.payoutBankEnabled !== 'false' && <option value="Bank Transfer">Bank Transfer</option>}
+                {settings.payoutEasyPaisaEnabled !== 'false' && <option value="EasyPaisa">EasyPaisa</option>}
+                {settings.payoutJazzCashEnabled !== 'false' && <option value="JazzCash">JazzCash</option>}
+                {settings.payoutNayaPayEnabled !== 'false' && <option value="NayaPay">NayaPay</option>}
+                {settings.payoutSadaPayEnabled !== 'false' && <option value="SadaPay">SadaPay</option>}
+                {settings.payoutPayPalEnabled !== 'false' && <option value="PayPal">PayPal</option>}
+                {settings.payoutCryptoEnabled !== 'false' && <option value="Crypto">Crypto</option>}
               </select>
             </div>
             <div>
