@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: digitaltechsouls_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-digitaltechsouls}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - dts_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: digitaltechsouls_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-digitaltechsouls}?schema=public
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_123!}
+      # Add other ENVs like Stripe and SMTP here
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    networks:
+      - dts_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: digitaltechsouls_frontend
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      # On production, this should be the public domain of the backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - dts_network
+
+volumes:
+  pgdata:
+
+networks:
+  dts_network:
+    driver: bridge

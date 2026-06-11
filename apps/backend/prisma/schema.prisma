@@ -1,0 +1,356 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  username         String?  @unique
+  phone            String?  @unique
+  profilePicture   String?
+  city             String?
+  country          String?
+  password         String
+  role             String   @default("NORMAL_USER") // SUPER_USER, ADMIN_USER, RESELLER_USER, NORMAL_USER
+  permissions      String   @default("[]") // JSON string array of specific rights
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  
+  // 2FA Fields
+  twoFactorSecret    String?
+  isTwoFactorEnabled Boolean @default(false)
+  
+  // Affiliate Fields
+  affiliateCode    String?  @unique
+  referredById     Int?
+  referredBy       User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals        User[]   @relation("Referrals")
+  commissionBalance Float   @default(0.0)
+  customCommissionRate Float?
+  withdrawals      Withdrawal[]
+  
+  @@index([referredById])
+  
+  orders           Order[]
+  licenses         License[]
+  tickets          Ticket[]
+  ticketMessages   TicketMessage[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Plan {
+  id        Int      @id @default(autoincrement())
+  name      String
+  price     Float
+  billing   String   @default("monthly") // monthly or yearly
+  storage   String
+  bandwidth String
+  emails    Int      @default(0)
+  databases Int      @default(0)
+  freeSsl   Boolean  @default(true)
+  backup    String   @default("daily")
+  isFeatured Boolean @default(false)
+  stripePriceId String? // Added for Stripe integration
+  orderUrl   String? // Custom order URL
+  subscriptions Subscription[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subscription {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id])
+  planId           Int?
+  plan             Plan?    @relation(fields: [planId], references: [id])
+  stripeCustomerId String?
+  stripeSubId      String?  @unique
+  status           String   @default("INCOMPLETE") // ACTIVE, CANCELED, PAST_DUE
+  currentPeriodEnd DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  name        String
+  icon        String?  // URL or lucide icon name
+  price       Float?
+  description String
+  features    String?  // Store as JSON string or comma separated
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Testimonial {
+  id        Int      @id @default(autoincrement())
+  name      String
+  company   String?
+  photo     String?
+  rating    Int      @default(5)
+  review    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id        Int      @id @default(autoincrement())
+  title     String
+  slug      String   @unique
+  content   String
+  author    String?
+  category  String?
+  metaTitle   String?
+  metaDesc    String?
+  seoKeywords String?
+  tags        String?
+  image       String?
+  youtubeUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Lead {
+  id            Int      @id @default(autoincrement())
+  name          String
+  email         String
+  phone         String
+  city          String?
+  country       String?
+  serviceNeeded String?
+  message       String
+  status        String   @default("NEW")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Setting {
+  id           Int      @id @default(autoincrement())
+  key          String   @unique
+  value        String
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model DigitalProduct {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Float
+  billing     String   @default("Monthly")
+  description String?
+  features    String?
+  imageUrl    String?
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Sale {
+  id                  Int      @id @default(autoincrement())
+  resellerName        String
+  productName         String
+  saleAmount          Float
+  commissionPercentage Float
+  commissionEarned    Float
+  status              String   @default("PENDING")
+  date                DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ThemeTool {
+  id              Int      @id @default(autoincrement())
+  name            String
+  type            String   @default("THEME") // THEME or TOOL
+  price           Float?
+  description     String
+  features        String?
+  imageUrl        String?
+  logoUrl         String?
+  downloadUrl     String?
+  livePreviewUrl  String?
+  metaTitle       String?
+  metaDesc        String?
+  seoKeywords     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  userId        Int
+  user          User        @relation(fields: [userId], references: [id])
+  totalAmount   Float       // Stored in base currency (USD) or PKR based on config
+  currency      String      @default("USD")
+  exchangeRate  Float       @default(1.0)
+  status        String      @default("PENDING") // PENDING, PAID, CANCELLED
+  paymentMethod String      @default("MANUAL")
+  paymentProof  String?     // URL to uploaded receipt if manual
+  trackingNote  String?     // Tracking link, delivery info, or progress note
+  
+  // Affiliate tracking
+  affiliateId      Int?
+  commissionAmount Float    @default(0.0)
+
+  items         OrderItem[]
+  invoice       Invoice?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+model Withdrawal {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  amount          Float
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  paymentMethod   String   // e.g. "Bank Transfer", "PayPal"
+  paymentDetails  String   // e.g. "IBAN: PK...", "Email: john@doe.com"
+  adminNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productType  String   // THEME, TOOL, LICENSE, SERVICE, PLAN
+  productId    Int
+  productName  String
+  price        Float
+  license      License?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model License {
+  id           Int       @id @default(autoincrement())
+  licenseKey   String    @unique
+  orderItemId  Int       @unique
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id])
+  status       String    @default("ACTIVE") // ACTIVE, REVOKED, EXPIRED
+  domain       String?   // If registered to a domain
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Currency {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique // e.g., USD, PKR, GBP
+  symbol    String   // e.g., $, Rs., £
+  rate      Float    // Conversion rate relative to the base currency (USD=1)
+  mode      String   @default("AUTO") // AUTO or MANUAL
+  isBase    Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ticket {
+  id        Int      @id @default(autoincrement())
+  subject   String
+  status    String   @default("OPEN") // OPEN, ANSWERED, CLOSED
+  priority  String   @default("MEDIUM") // LOW, MEDIUM, HIGH
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  messages  TicketMessage[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model TicketMessage {
+  id        Int      @id @default(autoincrement())
+  message   String
+  isStaff   Boolean  @default(false)
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([userId])
+}
+
+model ClientLogo {
+  id        Int      @id @default(autoincrement())
+  name      String
+  iconName  String?  @default("Box") // Name of Lucide icon (e.g., Box, Hexagon)
+  imageUrl  String?  // Uploaded custom logo URL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SiteVisit {
+  id        Int      @id @default(autoincrement())
+  path      String
+  ipAddress String?
+  userAgent String?
+  country   String?
+  createdAt DateTime @default(now())
+}
+
+model Invoice {
+  id              Int      @id @default(autoincrement())
+  invoiceNumber   String   @unique
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  orderId         Int?     @unique
+  order           Order?   @relation(fields: [orderId], references: [id])
+  
+  subtotal        Float
+  taxRate         Float    @default(0)
+  taxAmount       Float    @default(0)
+  discountRate    Float    @default(0)
+  discountAmount  Float    @default(0)
+  totalAmount     Float
+  
+  currency        String   @default("USD")
+  status          String   @default("UNPAID") // UNPAID, PAID, CANCELLED, REFUNDED
+  paymentMethod   String?  // BANK_TRANSFER, CRYPTO, STRIPE, EASYPAISA, JAZZCASH, etc.
+  paymentProof    String?  
+  
+  dueDate         DateTime
+  paidAt          DateTime?
+  
+  notes           String?
+  items           InvoiceItem[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model InvoiceItem {
+  id          Int      @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Float
+  total       Float
+}
